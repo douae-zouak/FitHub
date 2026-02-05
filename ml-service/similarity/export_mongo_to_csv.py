@@ -27,7 +27,7 @@ def export_mongo_to_csv(csv_path="Decathlon_data2.csv"):
     }))
 
     if not data:
-        print("⚠️ Aucun produit trouvé dans MongoDB")
+        print("Aucun produit trouvé dans MongoDB")
         return
 
     df = pd.DataFrame(data)
@@ -40,4 +40,4 @@ def export_mongo_to_csv(csv_path="Decathlon_data2.csv"):
     df = df[['sku','name','brand','price','rating','lien','image','category']]
 
     df.to_csv(csv_path, index=False)
-    print(f"✅ Export terminé : {len(df)} produits dans {csv_path}")
+    print(f"Export terminé : {len(df)} produits dans {csv_path}")

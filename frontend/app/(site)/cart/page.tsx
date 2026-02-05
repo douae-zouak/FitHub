@@ -16,30 +16,34 @@ import {
 } from "lucide-react";
 import { Product } from "../../types";
 import { userApi } from "../../lib/api";
+import { useCart } from "../../../context/CartContext";
 
 interface CartItem {
   product: Product | null;
   quantity: number;
 }
 
-import { useCart } from "@/context/CartContext";
-
-// ... ensure other imports are preserved
-
 export default function CartPage() {
   const router = useRouter();
+  const { refreshCounts } = useCart();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { removeFromCart, refreshCounts, isAuthenticated } = useCart(); // Use context
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchCart();
-    }
-  }, [isAuthenticated]);
+    fetchCart();
+  }, []);
+  const validItems = cartItems.filter((item) => item.product);
+  const subtotal = validItems.reduce(
+    (sum, item) => sum + (item.product?.price ?? 0) * item.quantity,
+    0,
+  );
+  const shipping = subtotal > 500 ? 0 : 50;
+  const total = subtotal + shipping;
+  const [orderMessage, setOrderMessage] = useState<string | null>(null);
 
   const fetchCart = async () => {
-    if (!isAuthenticated) {
+    const token = localStorage.getItem("token");
+    if (!token) {
       router.push("/auth/signin");
       return;
     }
@@ -47,11 +51,7 @@ export default function CartPage() {
     try {
       setLoading(true);
       const response = await userApi.getCart();
-      if (response.success) {
-        setCartItems(response.data);
-        // Sync context count with the detailed fetched cart
-        refreshCounts();
-      }
+      if (response.success) setCartItems(response.data);
     } catch (error) {
       console.error("Error fetching cart:", error);
     } finally {
@@ -83,26 +83,63 @@ export default function CartPage() {
 
   const removeItem = async (productId: string) => {
     try {
-      // Use context method to update backend AND global state
-      await removeFromCart(productId);
-      
-      // Update local state to reflect change immediately
-      setCartItems((items) =>
-        items.filter((item) => item.product?._id !== productId),
-      );
+      const response = await userApi.removeFromCart(productId);
+      if (response.success) {
+        setCartItems((items) =>
+          items.filter((item) => item.product?._id !== productId),
+        );
+      }
     } catch (error) {
       console.error("Error removing item:", error);
     }
   };
+  const handleCheckout = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/auth/signin");
+        return;
+      }
 
-  const validItems = cartItems.filter((item) => item.product);
+      // Prepare order items for backend
+      const orderItems = validItems.map((item) => ({
+        product: item.product!._id,
+        name: item.product!.name,
+        price: item.product!.price,
+        quantity: item.quantity,
+      }));
 
-  const subtotal = validItems.reduce(
-    (sum, item) => sum + (item.product?.price ?? 0) * item.quantity,
-    0,
-  );
-  const shipping = subtotal > 500 ? 0 : 50;
-  const total = subtotal + shipping;
+      const response = await userApi.createOrder({
+        items: orderItems,
+        shippingAddress: {
+          street: "Your street",
+          city: "Your city",
+          state: "Your state",
+          zipCode: "12345",
+          country: "Morocco",
+        },
+        paymentMethod: "cash",
+        totalAmount: subtotal + shipping,
+      });
+
+      if (response.success) {
+        // Clear cart locally
+        setCartItems([]);
+        
+        // Refresh cart counts in context
+        await refreshCounts();
+
+        // Show success message
+        setOrderMessage("✅ Order placed successfully! Your cart has been cleared.");
+
+        // Redirect to shop after 2 seconds
+        setTimeout(() => router.push("/shop"), 2000);
+      }
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      setOrderMessage("❌ Failed to place order. Please try again.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F0F0F0]">
@@ -117,6 +154,17 @@ export default function CartPage() {
                 : `${validItems.length} ${validItems.length === 1 ? "item" : "items"} in your cart`
             }
           />
+
+
+          {orderMessage && (
+            <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-4 rounded-lg shadow-xl z-50 flex items-center gap-3 ${
+              orderMessage.includes("❌") 
+                ? "bg-red-500 text-white" 
+                : "bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+            }`}>
+              <span className="text-lg font-semibold">{orderMessage}</span>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex justify-center items-center py-10">
@@ -200,7 +248,7 @@ export default function CartPage() {
                                 <p className="text-gray-500 text-sm mb-2">
                                   {item.product!.brand}
                                 </p>
-                                <p className="font-bold text- text-xl">
+                                <p className="font-bold text-balck text-xl">
                                   {item.product!.price.toFixed(2)} MAD
                                 </p>
                               </div>
@@ -288,7 +336,7 @@ export default function CartPage() {
               <div className="lg:col-span-1">
                 <div className="sticky top-24">
                   <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl p-6 border border-gray-200 shadow-lg overflow-hidden">
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-neon to-cyan-500"></div>
+                    <div className="absolute top-0 left-3 rounded-xl right-3 h-1 bg-gradient-to-r from-primary-neon to-cyan-500"></div>
                     <h3 className="font-bold text-2xl mb-6 text-gray-900">
                       Order Summary
                     </h3>
@@ -349,7 +397,11 @@ export default function CartPage() {
                       </div>
                     </div>
 
-                    <button className="w-full group relative overflow-hidden px-8 py-4 rounded-full bg-[#B67332] hover:bg-[#B67347] text-white font-bold hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                    <button
+                      onClick={handleCheckout} // <-- ici
+                      className="w-full group relative overflow-hidden px-8 py-4 rounded-full bg-gradient-to-r from-[#B67332] to-[#B67332] text-white font-bold hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#FFA726] to-[#FFBF66] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       <span className="relative flex items-center justify-center gap-3">
                         Proceed to Checkout
                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

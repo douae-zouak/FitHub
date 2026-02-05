@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product } from "../components/layout/types";
+import { Product } from "../types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
@@ -86,12 +86,10 @@ export const userApi = {
     const response = await api.get("/users/cart");
     return response.data;
   },
-
   addToCart: async (productId: string, quantity: number = 1) => {
     const response = await api.post("/users/cart", { productId, quantity });
     return response.data;
   },
-  
   removeFromCart: async (productId: string) => {
     const response = await api.delete(`/users/cart/${productId}`);
     return response.data;
@@ -108,8 +106,31 @@ export const userApi = {
   },
 
   getOrders: async () => {
-    const response = await api.get("/orders/myorders");
-    return response.data;
+    const token = localStorage.getItem("token");
+    const res = await fetch("/api/orders", {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return await res.json();
+  },
+  // Avant : (ça provoque le 404 car Next.js n'a pas cette route)
+  // const res = await fetch("/api/orders", { ... })
+
+  // Après :
+  createOrder: async (data: any) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:5000/api/orders", {
+      // <-- mettre l'URL complète de ton backend
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // si tu utilises JWT
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
   },
 };
 
