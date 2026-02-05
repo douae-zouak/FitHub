@@ -2,7 +2,7 @@
 
 A premium fitness platform combining Decathlon-style equipment sales with subscription-based coaching services.
 
-## 🚀 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Framework:** Next.js 14+ (App Router)
@@ -22,7 +22,7 @@ A premium fitness platform combining Decathlon-style equipment sales with subscr
 - **Models:** Customer Segmentation + Product Recommendations
 - **Integration:** REST API endpoints
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 project
@@ -77,3 +77,4 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
 ```
+
