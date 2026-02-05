@@ -71,11 +71,18 @@ npm run dev
 
 ### ML Service Setup
 ```bash
-cd ml-service
+cd ml-service/similarity
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
+```
+
+```bash
+cd ml-service/customer-segmentation
+python -m venv segenv
+source segenv/bin/activate  # On Windows: segenv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 
