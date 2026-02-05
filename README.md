@@ -79,10 +79,11 @@ python app.py
 ```
 
 ```bash
-cd ml-service/customer-segmentation
+cd ml-service/customer_segmentation
 python -m venv segenv
 source segenv/bin/activate  # On Windows: segenv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-segmentation.txt
 ```
+
 
 
